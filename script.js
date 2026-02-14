@@ -13,10 +13,18 @@ function start(){
 
   let link = location.origin + location.pathname + "#" + payload;
 
-  alert("Send this link to friend:\n\n" + link);
+  // show link on page
+  document.getElementById("shareBox").style.display="block";
+  document.getElementById("shareLink").value = link;
 
-  document.getElementById("setup").style.display="none";
-  document.getElementById("game").style.display="block";
+  document.getElementById("setup").style.display="block";
+  document.getElementById("game").style.display="none";
+}
+
+function copyLink(){
+  let link = document.getElementById("shareLink");
+  link.select();
+  navigator.clipboard.writeText(link.value);
 }
 
 if(location.hash){
