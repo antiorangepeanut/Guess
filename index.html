@@ -3,46 +3,98 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>P2P Code Breaker</title>
+    <title>Neon Code Duel</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 
-    <h1>Code Breaker P2P</h1>
+    <div class="app-container">
+        <h1 class="logo">NEON <span class="highlight">DUEL</span></h1>
 
-    <div class="container">
-        
-        <div id="menu-screen">
-            <p>Play "Mastermind" with a friend online.</p>
-            <button class="btn" onclick="hostGame()">Host Game</button>
-            <div style="margin: 15px 0; opacity: 0.7;">— OR —</div>
-            <input type="text" id="join-id-input" placeholder="Enter Friend's ID">
-            <button class="btn btn-secondary" onclick="joinGame()">Join Game</button>
+        <div id="menu-screen" class="card">
+            <h2>Multiplayer Code Breaker</h2>
+            <p class="subtitle">Set a code. Guess theirs. First to crack it wins.</p>
+            
+            <div class="menu-actions">
+                <button class="btn btn-primary" onclick="hostGame()">
+                    <i class="fas fa-server"></i> Host Game
+                </button>
+                <div class="divider">OR</div>
+                <div class="join-group">
+                    <input type="text" id="join-id-input" placeholder="Paste Friend's ID Here">
+                    <button class="btn btn-secondary" onclick="joinGame()">
+                        <i class="fas fa-plug"></i> Join
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <div id="lobby-screen" class="hidden">
-            <h3>Waiting for Player...</h3>
-            <p>Send this ID to your friend:</p>
-            <input type="text" id="my-peer-id" readonly onclick="this.select()">
-            <p id="lobby-status" style="font-size: 0.9rem; color: #aaa;">Connecting to server...</p>
-            <button class="btn btn-secondary" onclick="location.reload()">Cancel</button>
+        <div id="lobby-screen" class="card hidden">
+            <div class="loader-ring"></div>
+            <h3>Waiting for Opponent</h3>
+            <p>Share this ID with your friend:</p>
+            <div class="id-box" onclick="copyId()">
+                <span id="my-peer-id">Generating...</span>
+                <i class="fas fa-copy"></i>
+            </div>
+            <p id="lobby-msg">Waiting for connection...</p>
+            <button class="btn btn-text" onclick="location.reload()">Cancel</button>
         </div>
 
-        <div id="game-screen" class="hidden">
-            <div class="status-badge" id="connection-status">Connected</div>
-            <div id="role-display" class="role-indicator">Loading...</div>
-            <p id="instruction-text">Waiting...</p>
-
-            <div id="input-area">
-                <input type="tel" id="game-input" maxlength="4" placeholder="0000">
-                <button class="btn" id="action-btn" onclick="submitAction()">Submit</button>
+        <div id="setup-screen" class="card hidden">
+            <h3><i class="fas fa-user-secret"></i> Set Your Defense</h3>
+            
+            <div id="host-settings" class="settings-box hidden">
+                <label>Seconds per turn:</label>
+                <input type="number" id="timer-setting" value="30" min="5" max="300">
             </div>
 
-            <div class="history" id="game-history">
-                </div>
+            <p>Enter a 4-digit secret code:</p>
+            <input type="tel" id="secret-input" maxlength="4" class="code-input" placeholder="••••">
+            
+            <button class="btn btn-primary" id="lock-in-btn" onclick="confirmSecretCode()">
+                <i class="fas fa-lock"></i> Lock In Code
+            </button>
+            <p id="setup-status" class="status-text">Waiting for input...</p>
         </div>
 
+        <div id="game-screen" class="game-layout hidden">
+            
+            <div class="game-header">
+                <div id="turn-badge" class="badge">Wait...</div>
+                <div class="timer-container">
+                    <i class="fas fa-stopwatch"></i> <span id="timer-display">30</span>s
+                </div>
+            </div>
+
+            <div class="board">
+                <div id="input-section" class="input-area disabled">
+                    <input type="tel" id="game-input" maxlength="4" class="code-input" placeholder="GUESS">
+                    <button class="btn btn-action" id="submit-guess-btn" onclick="submitGuess()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+
+                <div class="history-container">
+                    <div class="history-header">Mission Log</div>
+                    <div id="game-history" class="history-list"></div>
+                </div>
+            </div>
+
+            <div class="status-footer">
+                <p id="game-status">Game Started</p>
+            </div>
+        </div>
+
+        <div id="end-screen" class="card hidden">
+            <h2 id="end-title">GAME OVER</h2>
+            <p id="end-reason">Reason</p>
+            <button class="btn btn-primary" onclick="location.reload()">
+                <i class="fas fa-redo"></i> Play Again
+            </button>
+        </div>
     </div>
 
     <script src="script.js"></script>
