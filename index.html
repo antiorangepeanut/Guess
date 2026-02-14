@@ -3,68 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CAUTION: CODE BREAKER</title>
+    <title>Code Breaker P2P</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <div class="terminal-window">
-        <h1 class="glitch">>> CODE_BREAKER_V3</h1>
+    <h1>Code Breaker P2P</h1>
 
-        <div id="screen-menu" class="screen active">
-            <p>>> INITIALIZE CONNECTION PROTOCOL</p>
-            <button class="btn" onclick="hostGame()">[ HOST GAME ]</button>
-            <p>>> OR CONNECT TO TARGET</p>
-            <input type="tel" id="join-id" maxlength="6" placeholder="ENTER 6-DIGIT ID">
-            <button class="btn btn-outline" onclick="joinGame()">[ JOIN ]</button>
+    <div class="container">
+        
+        <div id="screen-menu">
+            <p style="color: #ccc; margin-bottom: 20px;">Multiplayer 1v1</p>
+            <button class="btn" onclick="hostGame()">Host Game</button>
+            <div class="or-divider">- OR -</div>
+            <input type="text" id="join-id" placeholder="Enter Friend's ID">
+            <button class="btn btn-blue" onclick="joinGame()">Join Game</button>
         </div>
 
-        <div id="screen-lobby" class="screen">
-            <p>>> WAITING FOR UPLINK...</p>
-            <p>SHARE COORDINATES:</p>
-            <div class="id-display" onclick="copyId()">
-                <span id="my-peer-id">GENERATING...</span>
-            </div>
-            <p id="lobby-status" class="blink">...LISTENING...</p>
-            <button class="btn btn-small" onclick="location.reload()">[ ABORT ]</button>
-        </div>
-
-        <div id="screen-setup" class="screen">
-            <p>>> SET DEFENSE PERIMETER</p>
+        <div id="screen-lobby" class="hidden">
+            <h3>Waiting for Player...</h3>
+            <p style="color: #ccc; font-size: 0.9rem;">Send this ID to your friend:</p>
             
-            <div id="host-controls" class="hidden">
-                <label>>> TIMER SETTING: <span id="timer-val">30s</span></label>
-                <input type="range" id="timer-slider" min="10" max="60" value="30" step="5" oninput="document.getElementById('timer-val').innerText = this.value + 's'">
+            <div class="id-box" onclick="copyId()">
+                <span id="my-peer-id">Generating...</span>
+                <span style="font-size: 0.8rem; opacity: 0.7;">(Click to Copy)</span>
+            </div>
+            
+            <p id="lobby-status">Connecting to server...</p>
+            <button class="btn btn-blue" onclick="location.reload()">Cancel</button>
+        </div>
+
+        <div id="screen-setup" class="hidden">
+            <h3>Set Your Defense</h3>
+            
+            <div id="host-timer-control" class="hidden" style="margin-bottom: 20px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+                <label style="color: #4cc9f0;">Turn Timer: <span id="timer-val">30</span>s</label>
+                <input type="range" id="timer-slider" min="10" max="120" value="30" step="5" style="width: 100%;" oninput="document.getElementById('timer-val').innerText = this.value">
             </div>
 
-            <p>ENTER 4-DIGIT SECRET:</p>
+            <p style="color: #ccc;">Enter the secret code for your opponent to guess:</p>
             <input type="tel" id="secret-input" maxlength="4" placeholder="0000">
-            <button class="btn" id="lock-btn" onclick="lockInCode()">[ LOCK CODE ]</button>
-            <p id="setup-msg"></p>
+            <button class="btn" id="lock-btn" onclick="lockInCode()">Lock In Code</button>
+            <p id="setup-status" style="margin-top: 15px; font-weight: bold;"></p>
         </div>
 
-        <div id="screen-game" class="screen">
-            <div class="hud">
-                <div id="turn-display">WAITING</div>
-                <div id="timer-display">30</div>
-            </div>
-            
-            <div id="input-area" class="disabled">
-                <input type="tel" id="guess-input" maxlength="4" placeholder="____">
-                <button class="btn" onclick="submitGuess()">[ EXECUTE ]</button>
+        <div id="screen-game" class="hidden">
+            <div class="status-bar">
+                <span id="turn-badge" class="badge">Waiting...</span>
+                <span id="timer-badge" class="badge" style="color: #f72585;">30s</span>
             </div>
 
-            <div class="console-log" id="history-feed">
+            <div id="input-area">
+                <input type="tel" id="guess-input" maxlength="4" placeholder="Guess (e.g. 1234)">
+                <button class="btn" onclick="submitGuess()">Submit</button>
+            </div>
+
+            <div class="history" id="game-history">
                 </div>
         </div>
 
-        <div id="screen-end" class="screen">
-            <h1 id="end-title">GAME OVER</h1>
-            <p id="end-msg"></p>
-            <button class="btn" id="rematch-btn" onclick="requestRematch()">[ REBOOT SYSTEM ]</button>
-            <p id="rematch-status"></p>
+        <div id="screen-end" class="hidden">
+            <h2 id="end-title">WINNER</h2>
+            <p id="end-msg">Victory!</p>
+            <button class="btn" id="rematch-btn" onclick="requestRematch()">Play Again</button>
+            <p id="rematch-status" style="margin-top: 10px; color: #ccc;"></p>
         </div>
+
     </div>
 
     <script src="script.js"></script>
