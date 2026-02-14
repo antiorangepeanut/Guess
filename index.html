@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>4-Digit Code Duel</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="box">
+  <h2>4-Digit Code Duel</h2>
+
+  <div id="setup">
+    <p>Enter your secret code</p>
+    <input id="myCode" maxlength="4">
+    <br>
+    <button onclick="start()">Start Match</button>
+  </div>
+
+  <div id="game" style="display:none;">
+    <div class="timer" id="timer"></div>
+
+    <input id="guess" maxlength="4" placeholder="Guess">
+    <br>
+    <button onclick="makeGuess()">Guess</button>
+
+    <div class="log" id="log"></div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
