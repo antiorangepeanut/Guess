@@ -1,312 +1,84 @@
-// --- Game State Variables ---
-let peer = null;
-let conn = null;
-let myId = '';
-let isHost = false;
-
-// Game Logic
-let turnDuration = 30; // Default, will be overwritten by host settings
-let mySecretCode = '';
-let opponentSecretCodeIsSet = false;
-let mySecretCodeIsSet = false;
-let isMyTurn = false;
-let timerInterval = null;
-let timeLeft = 0;
-
-// --- DOM Elements ---
-const screens = {
-    menu: document.getElementById('menu-screen'),
-    lobby: document.getElementById('lobby-screen'),
-    setup: document.getElementById('setup-screen'),
-    game: document.getElementById('game-screen'),
-    end: document.getElementById('end-screen')
-};
-
-const els = {
-    myPeerId: document.getElementById('my-peer-id'),
-    joinInput: document.getElementById('join-id-input'),
-    lobbyMsg: document.getElementById('lobby-msg'),
-    secretInput: document.getElementById('secret-input'),
-    hostSettings: document.getElementById('host-settings'),
-    timerSetting: document.getElementById('timer-setting'),
-    setupStatus: document.getElementById('setup-status'),
-    turnBadge: document.getElementById('turn-badge'),
-    timerDisplay: document.getElementById('timer-display'),
-    gameInput: document.getElementById('game-input'),
-    history: document.getElementById('game-history'),
-    inputSection: document.getElementById('input-section'),
-    endTitle: document.getElementById('end-title'),
-    endReason: document.getElementById('end-reason')
-};
-
-// --- Initialization ---
-
-function hostGame() {
-    isHost = true;
-    els.hostSettings.classList.remove('hidden'); // Show timer input to host
-    showScreen('lobby');
-    initPeer();
+:root {
+    --bg-color: #050511;
+    --card-bg: rgba(20, 20, 35, 0.85);
+    --primary: #00f3ff;
+    --secondary: #bc13fe;
+    --text: #ffffff;
+    --text-dim: #8892b0;
+    --success: #00ff9d;
+    --warning: #ffbe0b;
+    --danger: #ff0055;
+    --font-head: 'Orbitron', sans-serif;
+    --font-body: 'Poppins', sans-serif;
 }
 
-function joinGame() {
-    const id = els.joinInput.value.trim();
-    if (!id) return alert("Enter an ID first!");
-    isHost = false;
-    els.hostSettings.classList.add('hidden'); // Hide timer input from joiner
-    showScreen('lobby');
-    initPeer(id);
+* { box-sizing: border-box; transition: all 0.2s ease; }
+
+body {
+    margin: 0; padding: 0;
+    background-color: var(--bg-color);
+    background-image: radial-gradient(circle at 50% 0%, #1a1a2e 0%, #000 80%);
+    color: var(--text);
+    font-family: var(--font-body);
+    height: 100vh; overflow: hidden;
+    display: flex; justify-content: center; align-items: center;
 }
 
-function initPeer(destId = null) {
-    peer = new Peer(null, { debug: 1 });
+.app-container { width: 100%; max-width: 500px; height: 100vh; display: flex; flex-direction: column; padding: 20px; position: relative; }
+.screen { display: none; flex-direction: column; height: 100%; justify-content: center; animation: fadeIn 0.4s ease-out; }
+.screen.active { display: flex; }
 
-    peer.on('open', (id) => {
-        els.myPeerId.innerText = id;
-        if (destId) {
-            els.lobbyMsg.innerText = "Connecting to host...";
-            conn = peer.connect(destId);
-            setupConnection();
-        }
-    });
-
-    peer.on('connection', (c) => {
-        if (isHost) {
-            conn = c;
-            setupConnection();
-        }
-    });
-
-    peer.on('error', (err) => {
-        alert("Connection Error: " + err.type);
-        showScreen('menu');
-    });
+/* Components */
+.glass {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px; padding: 25px;
+    box-shadow: 0 0 30px rgba(0, 243, 255, 0.1);
 }
 
-function setupConnection() {
-    conn.on('open', () => {
-        showScreen('setup');
-    });
+.logo { font-family: var(--font-head); font-size: 2rem; text-align: center; margin-bottom: 20px; text-shadow: 0 0 10px var(--primary); }
+.flicker { color: var(--secondary); text-shadow: 0 0 10px var(--secondary); }
 
-    conn.on('data', (data) => {
-        handleData(data);
-    });
+/* Inputs & Buttons */
+.btn { width: 100%; padding: 15px; border: none; border-radius: 12px; font-family: var(--font-head); font-weight: bold; font-size: 1rem; cursor: pointer; text-transform: uppercase; margin-top: 15px; }
+.btn-neon { background: linear-gradient(135deg, var(--secondary), #7b2cbf); color: white; box-shadow: 0 0 15px rgba(188, 19, 254, 0.4); }
+.btn-neon:active { transform: scale(0.98); }
+.btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+.btn-sm { background: none; color: var(--text-dim); font-size: 0.8rem; width: auto; margin: 10px auto; display: block; }
 
-    conn.on('close', () => {
-        alert("Opponent disconnected.");
-        location.reload();
-    });
-}
+input { width: 100%; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.1); padding: 15px; border-radius: 12px; color: white; font-family: var(--font-head); text-align: center; outline: none; font-size: 1.2rem; }
+input:focus { border-color: var(--primary); box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); }
+.big-input { font-size: 2rem; letter-spacing: 10px; }
 
-// --- Setup Phase ---
+/* Game UI */
+.timer-wrapper { width: 100%; height: 6px; background: rgba(255,255,255,0.1); margin-bottom: 20px; border-radius: 3px; overflow: hidden; }
+.timer-bar { height: 100%; width: 100%; background: var(--warning); transition: width 1s linear; }
 
-function confirmSecretCode() {
-    const code = els.secretInput.value;
-    if (code.length !== 4 || isNaN(code)) return alert("Please enter a 4-digit code.");
+.scoreboard { display: flex; justify-content: space-between; padding: 15px 25px; margin-bottom: 20px; }
+.score-box { text-align: center; }
+.score-box .label { font-size: 0.7rem; color: var(--text-dim); letter-spacing: 2px; }
+.score-box .value { font-family: var(--font-head); font-size: 1.5rem; color: var(--primary); }
 
-    mySecretCode = code;
-    mySecretCodeIsSet = true;
-    
-    // Capture timer setting if host
-    if (isHost) {
-        turnDuration = parseInt(els.timerSetting.value) || 30;
-    }
+.game-board { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.input-area { display: flex; gap: 10px; padding: 15px; margin-bottom: 15px; transition: opacity 0.3s; }
+.input-area.disabled { opacity: 0.4; pointer-events: none; }
+.icon-btn { width: auto; margin: 0; padding: 0 25px; }
 
-    // Lock UI
-    els.secretInput.disabled = true;
-    document.getElementById('lock-in-btn').disabled = true;
-    document.getElementById('lock-in-btn').innerText = "Locked In";
-    els.setupStatus.innerText = "Waiting for opponent...";
+.history-feed { flex: 1; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: 10px; padding-right: 5px; }
+.log-item { background: rgba(255,255,255,0.05); border-radius: 10px; padding: 12px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid transparent; }
+.log-item.mine { border-left-color: var(--primary); }
+.log-item.theirs { border-left-color: var(--secondary); }
+.guess-num { font-family: var(--font-head); font-size: 1.2rem; letter-spacing: 2px; }
+.feedback { display: flex; gap: 8px; font-size: 0.8rem; }
+.pill { padding: 4px 8px; border-radius: 4px; background: rgba(0,0,0,0.3); }
+.pill.green { color: var(--success); border: 1px solid var(--success); }
+.pill.yellow { color: var(--warning); border: 1px solid var(--warning); }
+.log-msg { text-align: center; width: 100%; font-size: 0.9rem; color: var(--warning); font-style: italic; }
 
-    conn.send({ type: 'CODE_SET_READY' });
-    checkStartGame();
-}
+.code-display { background: rgba(0,0,0,0.4); border: 1px dashed var(--secondary); padding: 15px; border-radius: 8px; font-family: monospace; font-size: 2rem; letter-spacing: 5px; cursor: pointer; display: flex; justify-content: center; gap: 15px; align-items: center; margin: 15px 0; color: var(--secondary); font-weight: bold; }
+.hidden { display: none !important; }
+.range-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+input[type=range] { flex: 1; accent-color: var(--primary); }
 
-function checkStartGame() {
-    if (mySecretCodeIsSet && opponentSecretCodeIsSet) {
-        // If Host, send the Start signal with the timer settings
-        if (isHost) {
-            conn.send({ type: 'START_GAME', settings: { timeLimit: turnDuration } });
-            startGame();
-        }
-    }
-}
-
-// --- Game Logic ---
-
-function startGame() {
-    showScreen('game');
-    // Host goes first
-    if (isHost) startTurn(true);
-    else startTurn(false);
-}
-
-function startTurn(isMine) {
-    isMyTurn = isMine;
-    timeLeft = turnDuration;
-    updateTimerDisplay();
-    clearInterval(timerInterval);
-
-    if (isMyTurn) {
-        els.turnBadge.innerText = "YOUR TURN";
-        els.turnBadge.className = "badge your-turn";
-        els.inputSection.classList.remove('disabled');
-        els.gameInput.value = '';
-        els.gameInput.focus();
-        
-        timerInterval = setInterval(() => {
-            timeLeft--;
-            updateTimerDisplay();
-            if (timeLeft <= 0) handleTimeout();
-        }, 1000);
-    } else {
-        els.turnBadge.innerText = "OPPONENT'S TURN";
-        els.turnBadge.className = "badge their-turn";
-        els.inputSection.classList.add('disabled');
-    }
-}
-
-function updateTimerDisplay() {
-    els.timerDisplay.innerText = timeLeft;
-    els.timerDisplay.style.color = timeLeft <= 10 ? '#ef4444' : '#f59e0b';
-}
-
-function handleTimeout() {
-    clearInterval(timerInterval);
-    // Timeout logic: Skip turn instead of lose game
-    conn.send({ type: 'SKIP_TURN' });
-    
-    // Log it locally
-    addLogMessage("You ran out of time! Turn skipped.", "skipped-msg");
-    
-    // Pass turn
-    startTurn(false);
-}
-
-function submitGuess() {
-    const guess = els.gameInput.value;
-    if (guess.length !== 4 || isNaN(guess)) return;
-
-    clearInterval(timerInterval);
-    isMyTurn = false;
-    els.inputSection.classList.add('disabled');
-    conn.send({ type: 'GUESS', guess: guess });
-}
-
-function calculateFeedback(secret, guess) {
-    let bulls = 0, cows = 0;
-    const sArr = secret.split(''), gArr = guess.split('');
-    const sFreq = {}, gFreq = {};
-
-    for (let i = 0; i < 4; i++) {
-        if (sArr[i] === gArr[i]) {
-            bulls++;
-            sArr[i] = null; gArr[i] = null;
-        }
-    }
-
-    for (let i = 0; i < 4; i++) {
-        if (sArr[i] !== null) sFreq[sArr[i]] = (sFreq[sArr[i]] || 0) + 1;
-        if (gArr[i] !== null) gFreq[gArr[i]] = (gFreq[gArr[i]] || 0) + 1;
-    }
-
-    for (let key in gFreq) {
-        if (sFreq[key]) cows += Math.min(gFreq[key], sFreq[key]);
-    }
-    return { bulls, cows };
-}
-
-// --- Data Handling ---
-
-function handleData(data) {
-    switch (data.type) {
-        case 'CODE_SET_READY':
-            opponentSecretCodeIsSet = true;
-            if (!mySecretCodeIsSet) els.setupStatus.innerText = "Opponent ready! Waiting for you...";
-            else checkStartGame();
-            break;
-
-        case 'START_GAME':
-            // Client receives start signal and settings
-            if (data.settings && data.settings.timeLimit) {
-                turnDuration = data.settings.timeLimit;
-            }
-            startGame();
-            break;
-
-        case 'GUESS':
-            const feedback = calculateFeedback(mySecretCode, data.guess);
-            if (feedback.bulls === 4) {
-                conn.send({ type: 'RESULT', guess: data.guess, feedback: feedback, winner: true });
-                endGame(false, `Opponent cracked your code (${mySecretCode})!`);
-            } else {
-                conn.send({ type: 'RESULT', guess: data.guess, feedback: feedback, winner: false });
-                addToLog(data.guess, feedback, "Opponent");
-                startTurn(true);
-            }
-            break;
-
-        case 'RESULT':
-            addToLog(data.guess, data.feedback, "You");
-            if (data.winner) endGame(true, "VICTORY! You cracked the code.");
-            else startTurn(false);
-            break;
-            
-        case 'SKIP_TURN':
-            // Opponent timed out
-            addLogMessage("Opponent timed out!", "skipped-msg");
-            startTurn(true); // My turn now
-            break;
-    }
-}
-
-// --- UI Helpers ---
-
-function addToLog(guess, fb, who) {
-    const item = document.createElement('div');
-    item.className = 'guess-item';
-    item.style.borderLeftColor = who === "You" ? 'var(--primary)' : 'var(--accent)';
-    const label = who === "You" ? "" : `<span style='font-size:0.7rem; color:#aaa; margin-right:5px'>(Opp)</span>`;
-    item.innerHTML = `
-        <div class="guess-val">${label}${guess}</div>
-        <div class="guess-feedback">
-            <span class="fb-pill fb-correct"><i class="fas fa-check-circle"></i> ${fb.bulls}</span>
-            <span class="fb-pill fb-place"><i class="fas fa-random"></i> ${fb.cows}</span>
-        </div>
-    `;
-    els.history.prepend(item);
-}
-
-function addLogMessage(msg, className) {
-    const item = document.createElement('div');
-    item.className = `guess-item ${className}`;
-    item.innerText = msg;
-    els.history.prepend(item);
-}
-
-function endGame(win, reason) {
-    clearInterval(timerInterval);
-    showScreen('end');
-    els.endTitle.innerText = win ? "YOU WIN" : "DEFEAT";
-    els.endTitle.style.color = win ? "var(--success)" : "var(--accent)";
-    els.endReason.innerText = reason;
-}
-
-function showScreen(name) {
-    Object.values(screens).forEach(s => s.classList.add('hidden'));
-    screens[name].classList.remove('hidden');
-}
-
-function copyId() {
-    navigator.clipboard.writeText(els.myPeerId.innerText);
-    alert("ID Copied!");
-}
-
-[els.secretInput, els.gameInput].forEach(inp => {
-    inp.addEventListener('input', function() { this.value = this.value.replace(/[^0-9]/g, ''); });
-    inp.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            if (this.id === 'secret-input') confirmSecretCode();
-            else submitGuess();
-        }
-    });
-});
+@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
