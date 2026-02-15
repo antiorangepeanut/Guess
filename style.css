@@ -1,11 +1,11 @@
 :root {
-    --bg: #1a1a2e;       /* Dark Navy Background */
-    --card: #16213e;     /* Slightly lighter card */
-    --accent: #e94560;   /* Red/Pink (Buttons/Heading) */
-    --blue: #0f3460;     /* Dark Blue (Secondary Buttons) */
-    --cyan: #4cc9f0;     /* "Correct" Text */
-    --pink: #f72585;     /* "Wrong Place" Text */
-    --text: #ffffff;
+    --bg: #101015;       /* Very dark, near-black background */
+    --card: #1a1a20;     /* Slightly lighter card background */
+    --accent: #e8e0b0;   /* Pale gold for primary buttons and headings */
+    --blue: #d0c090;     /* Muted gold for secondary buttons */
+    --cyan: #e8e0b0;     /* Pale gold for "Correct" text */
+    --pink: #c0b080;     /* Darker gold for "Wrong Place" text */
+    --text: #e8e0b0;     /* Pale gold for general text */
 }
 
 body {
@@ -42,7 +42,7 @@ h1 {
 .hidden { display: none !important; }
 .btn {
     background-color: var(--accent);
-    color: white;
+    color: var(--bg);
     border: none;
     padding: 15px;
     border-radius: 8px;
@@ -61,10 +61,10 @@ input {
     width: 100%;
     padding: 15px;
     margin: 10px 0;
-    background: #0f3460;
-    border: 2px solid #0f3460;
+    background: var(--bg);
+    border: 2px solid var(--blue);
     border-radius: 8px;
-    color: white;
+    color: var(--text);
     font-size: 1.2rem;
     text-align: center;
     box-sizing: border-box;
@@ -73,7 +73,7 @@ input {
 }
 input:focus { border-color: var(--accent); }
 
-.or-divider { margin: 15px 0; color: #666; font-weight: bold; }
+.or-divider { margin: 15px 0; color: #888; font-weight: bold; }
 
 /* --- LOBBY --- */
 .id-box {
@@ -108,12 +108,13 @@ input:focus { border-color: var(--accent); }
 }
 
 .guess-row {
-    background: #0f3460;
+    background: var(--bg);
     padding: 12px;
     border-radius: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border: 1px solid var(--blue);
 }
 
 .guess-val { font-family: monospace; font-size: 1.3rem; font-weight: bold; letter-spacing: 3px; }
@@ -124,4 +125,4 @@ input:focus { border-color: var(--accent); }
 /* --- SCROLLBAR --- */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: var(--blue); border-radius: 4px; }
