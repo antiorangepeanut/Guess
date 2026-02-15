@@ -3,7 +3,7 @@ let peer = null;
 let conn = null;
 let isHost = false;
 
-// Game Config & Variables
+// Game Config
 let turnTime = 30;
 let mySecret = "";
 let mySecretSet = false;
@@ -15,15 +15,14 @@ let myRematch = false;
 let opRematch = false;
 
 // --- DOM ELEMENTS ---
-const screens = {
-    menu: document.getElementById('screen-menu'),
-    lobby: document.getElementById('screen-lobby'),
-    setup: document.getElementById('screen-setup'),
-    game: document.getElementById('screen-game'),
-    end: document.getElementById('screen-end')
-};
-
 const els = {
+    screens: {
+        menu: document.getElementById('screen-menu'),
+        lobby: document.getElementById('screen-lobby'),
+        setup: document.getElementById('screen-setup'),
+        game: document.getElementById('screen-game'),
+        end: document.getElementById('screen-end')
+    },
     myId: document.getElementById('my-peer-id'),
     joinInput: document.getElementById('join-id'),
     lobbyStatus: document.getElementById('lobby-status'),
@@ -42,25 +41,32 @@ const els = {
     rematchStatus: document.getElementById('rematch-status')
 };
 
-// --- PEERJS ---
-function initPeer(id = null) {
-    // Generate random 4-6 digit ID if hosting, use passed ID if joining
-    const myPeerId = id || Math.floor(100000 + Math.random() * 900000).toString();
-    peer = new Peer(myPeerId);
+// --- PEERJS LOGIC ---
+function initPeer(customId = null) {
+    // Generate a simple 4-digit ID for Host to make it easier to type
+    // We add a random prefix internally to avoid global collisions, but show user simple ID?
+    // Actually, PeerJS IDs must be unique. Let's use a 5-digit random number.
+    const idToUse = customId || Math.floor(10000 + Math.random() * 90000).toString();
+    
+    peer = new Peer(idToUse);
 
     peer.on('open', (id) => {
         els.myId.innerText = id;
+        els.lobbyStatus.innerText = "Waiting for opponent...";
+        
         if (!isHost) {
-            // Joiner logic
+            // If joining, connect immediately
             const hostId = els.joinInput.value.trim();
             if(!hostId) return alert("Enter Host ID");
-            els.lobbyStatus.innerText = "Connecting...";
+            
+            els.lobbyStatus.innerText = "Connecting to " + hostId + "...";
             conn = peer.connect(hostId);
             setupConn();
         }
     });
 
     peer.on('connection', (c) => {
+        // Host receives connection
         if (isHost) {
             conn = c;
             setupConn();
@@ -68,7 +74,13 @@ function initPeer(id = null) {
     });
 
     peer.on('error', (err) => {
-        alert("Connection Error: " + err.type);
+        console.error(err);
+        if(err.type === 'unavailable-id') {
+            // ID taken, retry with new random ID
+            initPeer(); 
+        } else {
+            alert("Connection Error: " + err.type);
+        }
     });
 }
 
@@ -95,28 +107,27 @@ function hostGame() {
 function joinGame() {
     isHost = false;
     showScreen('lobby');
-    // Prefix ID to avoid collision with Host
-    initPeer("p2_" + Math.floor(1000 + Math.random() * 9000));
+    // Joiner needs a different ID than Host.
+    // We prefix with 'p2_' to ensure uniqueness from the host's number-only ID
+    initPeer("p2_" + Math.floor(10000 + Math.random() * 90000));
 }
 
 // --- GAME LOGIC ---
 
 function lockInCode() {
     const val = els.secretInput.value;
-    if (val.length !== 4 || isNaN(val)) return alert("Enter a 4-digit code.");
+    if (val.length !== 4 || isNaN(val)) return alert("Enter 4 digits.");
 
     mySecret = val;
     mySecretSet = true;
     
-    // UI Update
     els.secretInput.disabled = true;
     els.lockBtn.disabled = true;
-    els.lockBtn.innerText = "Code Locked";
+    els.lockBtn.innerText = "Locked";
     els.setupStatus.innerText = "Waiting for opponent...";
 
     if(isHost) turnTime = parseInt(els.timerSlider.value);
 
-    // Notify opponent
     conn.send({ type: 'READY' });
     checkStart();
 }
@@ -133,7 +144,7 @@ function checkStart() {
 function startGame() {
     showScreen('game');
     els.history.innerHTML = ''; 
-    startTurn(isHost); // Host goes first
+    startTurn(isHost); 
 }
 
 function startTurn(mine) {
@@ -144,7 +155,7 @@ function startTurn(mine) {
 
     if (isMyTurn) {
         els.turnBadge.innerText = "YOUR TURN";
-        els.turnBadge.style.color = "#4cc9f0";
+        els.turnBadge.style.color = "#d4af37";
         els.guessInput.disabled = false;
         els.guessInput.value = '';
         els.guessInput.focus();
@@ -154,15 +165,14 @@ function startTurn(mine) {
             updateTimer();
             if (timeLeft <= 0) {
                 clearInterval(timerInt);
-                // Timeout logic: Skip turn
                 conn.send({ type: 'SKIP' });
-                addLog("Time ran out! Turn Skipped.", "0", "0", true);
+                addLog("Time Out", 0, 0, true);
                 startTurn(false);
             }
         }, 1000);
     } else {
-        els.turnBadge.innerText = "OPPONENT'S TURN";
-        els.turnBadge.style.color = "#f72585";
+        els.turnBadge.innerText = "OPPONENT TURN";
+        els.turnBadge.style.color = "#888";
         els.guessInput.disabled = true;
     }
 }
@@ -177,7 +187,6 @@ function submitGuess() {
 
     clearInterval(timerInt);
     els.guessInput.disabled = true;
-    // Send guess to opponent to check against their secret
     conn.send({ type: 'GUESS', val: val });
 }
 
@@ -188,7 +197,7 @@ function handleData(data) {
         case 'READY':
             opSecretSet = true;
             if(mySecretSet) checkStart();
-            else els.setupStatus.innerText = "Opponent Ready! Waiting for you...";
+            else els.setupStatus.innerText = "Opponent Ready...";
             break;
 
         case 'START':
@@ -197,38 +206,38 @@ function handleData(data) {
             break;
 
         case 'GUESS':
-            // Opponent guessed MY code
+            // Check their guess against MY secret
             const res = calcStats(mySecret, data.val);
-            if(res.correct === 4) {
+            if(res.correctPlace === 4) {
                 conn.send({ type: 'WIN', val: data.val });
-                endGame(false); // They won, I lost
+                endGame(false); 
             } else {
                 conn.send({ type: 'RESULT', val: data.val, res: res });
-                // Log their guess on my screen
-                addLog(data.val, res.correct, res.place, false, true);
-                startTurn(true); // My turn
+                // Log opponent guess
+                addLog(data.val, res.correctNum, res.correctPlace, false, true);
+                startTurn(true); 
             }
             break;
 
         case 'RESULT':
-            // Result of MY guess
-            addLog(data.val, data.res.correct, data.res.place, false, false);
+            // Log my guess result
+            addLog(data.val, data.res.correctNum, data.res.correctPlace, false, false);
             startTurn(false);
             break;
 
         case 'SKIP':
-            addLog("Opponent Timed Out!", "0", "0", true);
+            addLog("Opponent Time Out", 0, 0, true);
             startTurn(true);
             break;
 
         case 'WIN':
-            addLog(data.val, 4, 0, false, false);
-            endGame(true); // I won
+            addLog(data.val, 4, 4, false, false);
+            endGame(true);
             break;
 
         case 'REMATCH_REQ':
             opRematch = true;
-            els.rematchStatus.innerText = "Opponent wants to play again...";
+            els.rematchStatus.innerText = "Opponent requested reset...";
             checkRematch();
             break;
 
@@ -241,46 +250,60 @@ function handleData(data) {
 // --- HELPERS ---
 
 function calcStats(secret, guess) {
-    let correct = 0;
-    let place = 0;
     let s = secret.split('');
     let g = guess.split('');
-
-    // Bulls (Correct)
+    
+    // 1. Correct Place (Exact Match)
+    let correctPlace = 0;
     for(let i=0; i<4; i++) {
         if(s[i] === g[i]) {
-            correct++;
-            s[i] = null;
+            correctPlace++;
+            s[i] = null; // Remove to prevent double counting
             g[i] = null;
         }
     }
-    // Cows (Wrong Place)
+
+    // 2. Correct Number (Wrong Place)
+    // Note: You asked for "How many numbers match" (Total Correct Numbers)
+    // vs "How many at same place". 
+    // Usually "Cows" means Correct Num but Wrong Place.
+    // If you want "Total Correct Numbers" (including correct place), logic is slightly different.
+    // I will stick to standard logic:
+    // Col 1: Total Matching Numbers (regardless of position)
+    // Col 2: Correct Position
+    
+    // Let's reset arrays to count TOTAL matches first
+    let s2 = secret.split('');
+    let g2 = guess.split('');
+    let totalMatches = 0;
+    
     for(let i=0; i<4; i++) {
-        if(g[i] !== null) {
-            let idx = s.indexOf(g[i]);
-            if(idx !== -1) {
-                place++;
-                s[idx] = null;
-            }
+        const idx = s2.indexOf(g2[i]);
+        if(idx !== -1) {
+            totalMatches++;
+            s2[idx] = null; // consume
         }
     }
-    return { correct, place };
+
+    return { correctNum: totalMatches, correctPlace: correctPlace };
 }
 
-function addLog(guess, correct, place, isMsg, isOpponent) {
+function addLog(guess, numMatch, placeMatch, isMsg, isOpp) {
     const div = document.createElement('div');
     div.className = 'guess-row';
     
     if(isMsg) {
-        div.innerHTML = `<span style="width:100%; text-align:center; color:#f72585;">${guess}</span>`;
+        div.innerHTML = `<span style="width:100%; text-align:center; color:#555;">${guess}</span>`;
     } else {
-        const who = isOpponent ? "<span style='font-size:0.8rem; color:#ccc'>(Opp)</span> " : "";
+        const label = isOpp ? `<span style="color:#555; font-size:0.8rem;">(Opp)</span> ` : "";
+        
+        // 2 COLUMN LAYOUT
         div.innerHTML = `
-            <span class="guess-val">${who}${guess}</span>
-            <span class="guess-res">
-                <span class="res-correct">${correct} Correct</span> | 
-                <span class="res-place">${place} Right Num, Wrong Place</span>
-            </span>
+            <div class="guess-val">${label}${guess}</div>
+            <div class="analysis-box">
+                <span class="hl-num">${numMatch}</span> Correct Numbers<br>
+                <span class="hl-num">${placeMatch}</span> Correct Place
+            </div>
         `;
     }
     els.history.prepend(div);
@@ -290,14 +313,14 @@ function endGame(win) {
     clearInterval(timerInt);
     showScreen('end');
     els.endTitle.innerText = win ? "VICTORY" : "DEFEAT";
-    els.endTitle.style.color = win ? "#4cc9f0" : "#f72585";
-    els.endMsg.innerText = win ? "You cracked the code!" : "Your code was cracked.";
+    els.endTitle.style.color = win ? "#d4af37" : "#555";
+    els.endMsg.innerText = win ? "Sequence Decoded." : "Defense Breached.";
 }
 
 function requestRematch() {
     myRematch = true;
     els.rematchBtn.disabled = true;
-    els.rematchBtn.innerText = "Waiting...";
+    els.rematchBtn.innerText = "Requesting...";
     conn.send({ type: 'REMATCH_REQ' });
     checkRematch();
 }
@@ -316,26 +339,25 @@ function resetGame() {
     els.secretInput.value = '';
     els.secretInput.disabled = false;
     els.lockBtn.disabled = false;
-    els.lockBtn.innerText = "Lock In Code";
+    els.lockBtn.innerText = "Lock Sequence";
     els.setupStatus.innerText = "";
     els.rematchBtn.disabled = false;
-    els.rematchBtn.innerText = "Play Again";
+    els.rematchBtn.innerText = "Reset Timeline";
     els.rematchStatus.innerText = "";
     
     showScreen('setup');
 }
 
 function showScreen(name) {
-    Object.values(screens).forEach(s => s.classList.add('hidden'));
-    document.getElementById('screen-' + name).classList.remove('hidden');
+    Object.values(els.screens).forEach(s => s.classList.add('hidden'));
+    els.screens[name].classList.remove('hidden');
 }
 
 function copyId() {
     navigator.clipboard.writeText(els.myId.innerText);
-    alert("ID Copied!");
+    alert("ID Copied");
 }
 
-// Number Only Input
 [els.secretInput, els.guessInput].forEach(inp => {
     inp.addEventListener('input', function() { 
         this.value = this.value.replace(/[^0-9]/g, ''); 
